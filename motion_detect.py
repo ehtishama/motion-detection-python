@@ -4,12 +4,13 @@ import time
 import math
 import os
 import uuid
+import datetime
 
-# Config Parameters
+# Config
 
 # determines the threshold value to binarize
 # the difference frame
-THRESHOLD_VALUE = 30
+THRESHOLD_VALUE = 20
 
 # kernel size for perfoming erosion 
 # on the differnece frame to remove small noises
@@ -19,7 +20,7 @@ ERO_KERNEL_SIZE = 2
 # determies the sensitivity of detection
 # 1 means the system will detect slightest motion
 # 0 means even the won't be detected
-MOTION_SENSITIVITY = 0.5
+MOTION_SENSITIVITY = 0.6
 
 # determines the minimun numbers of pixels that need to change
 # on the log 10 scale to be considered as motion
@@ -34,6 +35,9 @@ MIN_CONTOUR_AREA = 400
 # to avoid continous frames being captures 
 DELAY_BETWEEN_CAPTURES = 5
 
+# whether to save images with motion or not
+CAPTURE_MOTION_IMAGES =  True
+
 # to store images when motion is captured
 CAPTURE_PATH = './motion_captures/'
 
@@ -45,11 +49,12 @@ OUTPUT_STREAM = True
 # number of images before the program exists
 MAX_IMAGE_COUNT = 100
 
+PRINT_LOGS = True
 
 def detect_motion():
     # get live feed from webcam
-    #cap = cv.VideoCapture("./data/self_video.mp4")
-    cap = cv.VideoCapture(0)
+    cap = cv.VideoCapture("./test_videos/trap-camera-video2.mp4")
+    # cap = cv.VideoCapture(0)
 
     previous_capture_time = None
     previous_frame = None
@@ -61,7 +66,7 @@ def detect_motion():
         ret, raw_image = cap.read()
         
         
-        # loop back to start on video end
+        # loop back to start of the video
         if not ret:
             cap.set(cv.CAP_PROP_POS_FRAMES, 0)
             continue
@@ -104,28 +109,34 @@ def detect_motion():
         
         # count no of pixels where motion with enough change 
         pixels_changed = np.sum(diff_frame_processed == 255)
-        # print(math.log10(pixels_changed + 1 ))
+        lg_pixels_changed = np.log10(pixels_changed + 1)
+        
+        if PRINT_LOGS and lg_pixels_changed > 1:
+            # clear_console()
+            print(f'{datetime.datetime.now().strftime("%I:%M:%S%p on %B %d, %Y")} ', end='')
+            print(f'{"Motion detected" if lg_pixels_changed > MIN_PIXELS_CHANGED else "No motion detected"}. ', end='')
+            print(f'1e^{lg_pixels_changed:.1f} pixels changed.\n')
 
-        if pixels_changed > 0 and  math.log10(pixels_changed) >= MIN_PIXELS_CHANGED:
-            print(f'Motion detected {np.log10(pixels_changed):.1f}e^{MIN_PIXELS_CHANGED} pixels changed')
+        if pixels_changed > 0 and  math.log10(pixels_changed) >= MIN_PIXELS_CHANGED:            
             motion = True
 
-            # save current frame
-            dst_path = os.path.join(CAPTURE_PATH, f'{str(uuid.uuid1())}.jpg')
-            
-            if not cv.imwrite(dst_path, raw_image):
-                raise Exception('Could not write image')
-            else:
-
-                # don't capture more than MAX_IMAGE_COUNT  
-                image_count += 1
-                if image_count > MAX_IMAGE_COUNT:
-                    return
+            if CAPTURE_MOTION_IMAGES:
+                # save current frame
+                dst_path = os.path.join(CAPTURE_PATH, f'{str(uuid.uuid1())}.jpg')
                 
-                # image captured, don't capture anymore images for the next X seconds
-                previous_capture_time = time.time()
-        
+                if not cv.imwrite(dst_path, raw_image):
+                    raise Exception('Could not write image')
+                else:
 
+                    # don't capture more than MAX_IMAGE_COUNT  
+                    image_count += 1
+                    if image_count > MAX_IMAGE_COUNT:
+                        return
+                    
+                    # image captured, don't capture anymore images for the next X seconds
+                    previous_capture_time = time.time()
+        
+                       
         # detect and segment shapes
         diff_frame_contours, hierarchy = cv.findContours(image=diff_frame_processed, mode=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_SIMPLE)
         
@@ -155,4 +166,10 @@ def detect_motion():
     cv.destroyAllWindows()
     
     
+
+
+def clear_console():
+    os.system(f'cls' if os.name == 'nt' else 'clear')
+
+
 detect_motion()

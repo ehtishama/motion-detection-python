@@ -51,7 +51,7 @@ MAX_IMAGE_COUNT = 100
 
 PRINT_LOGS = True
 
-def detect_motion():
+def detect_motion(callback):
     # get live feed from webcam
     cap = cv.VideoCapture("./test_videos/trap-camera-video2.mp4")
     # cap = cv.VideoCapture(0)
@@ -136,6 +136,7 @@ def detect_motion():
                     # image captured, don't capture anymore images for the next X seconds
                     previous_capture_time = time.time()
         
+            callback(raw_image)
                        
         # detect and segment shapes
         diff_frame_contours, hierarchy = cv.findContours(image=diff_frame_processed, mode=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_SIMPLE)
@@ -164,12 +165,6 @@ def detect_motion():
 
     cap.release()
     cv.destroyAllWindows()
-    
-    
-
-
+ 
 def clear_console():
     os.system(f'cls' if os.name == 'nt' else 'clear')
-
-
-detect_motion()

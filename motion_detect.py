@@ -53,6 +53,7 @@ PRINT_LOGS = True
 
 def detect_motion(callback):
     print('Starting motion detection...')
+    
     # get live feed from webcam
     cap = cv.VideoCapture("./test_videos/trap-camera-video1.mp4")
     # cap = cv.VideoCapture(0)

@@ -52,8 +52,9 @@ MAX_IMAGE_COUNT = 100
 PRINT_LOGS = True
 
 def detect_motion(callback):
+    print('Starting motion detection...')
     # get live feed from webcam
-    cap = cv.VideoCapture("./test_videos/trap-camera-video2.mp4")
+    cap = cv.VideoCapture("./test_videos/trap-camera-video1.mp4")
     # cap = cv.VideoCapture(0)
 
     previous_capture_time = None

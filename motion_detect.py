@@ -5,6 +5,7 @@ import math
 import os
 import uuid
 import datetime
+from utils import clear_console
 
 # Config
 
@@ -58,7 +59,7 @@ def detect_motion(callback):
     cap = cv.VideoCapture("./test_videos/trap-camera-video1.mp4")
     # cap = cv.VideoCapture(0)
 
-    previous_capture_time = None
+    previous_capture_time = 0
     previous_frame = None
     image_count = 0
 
@@ -67,47 +68,40 @@ def detect_motion(callback):
         motion = False
         ret, raw_image = cap.read()
         
-        
         # loop back to start of the video
         if not ret:
             cap.set(cv.CAP_PROP_POS_FRAMES, 0)
             continue
         
         raw_image = cv.resize(raw_image, (512, 512))
-        
-        # this prevents from continually capturing
-        # each frame once motion is detected
-        if previous_capture_time and  time.time() - previous_capture_time <= DELAY_BETWEEN_CAPTURES:
-            
-            if OUTPUT_STREAM:
-                cv.imshow('Video', raw_image) # press escape to exit
-                cv.waitKey(30)
-            
-            continue
-        
-
-        # Controlling FPS
-        # if time.time() * 1000 - start_time * 1000  <= (1/fps) * 1000:
-        #     continue
-        # else:
-        #     start_time = time.time()
-            
         current_frame = cv.cvtColor(src=raw_image, code=cv.COLOR_BGR2GRAY)
         
         if previous_frame is None:
             previous_frame = current_frame
             continue
-
+        
         # find difference b/w current and prev frames 
         diff_frame = cv.absdiff(current_frame, previous_frame)
-
-        # 
         diff_frame_processed = cv.threshold(src=diff_frame, thresh=THRESHOLD_VALUE, maxval=255, type=cv.THRESH_BINARY)[1]
-        
         
         # apply morph-opening to remove small change
         ero_kernel = np.ones((ERO_KERNEL_SIZE, ERO_KERNEL_SIZE))
         diff_frame_processed = cv.morphologyEx(diff_frame_processed, cv.MORPH_OPEN, ero_kernel)
+        
+        
+        # this prevents from continually capturing
+        # each frame once motion is detected
+        time_since_last_capture = time.time() - previous_capture_time
+        if time_since_last_capture <= DELAY_BETWEEN_CAPTURES:
+            
+            # display output
+            if OUTPUT_STREAM:
+                cv.imshow('Video', raw_image) # press escape to exit
+                cv.imshow('Difference', diff_frame_processed)
+            
+            if (cv.waitKey(30) == 27):
+                break
+            continue
         
         # count no of pixels where motion with enough change 
         pixels_changed = np.sum(diff_frame_processed == 255)
@@ -115,11 +109,11 @@ def detect_motion(callback):
         
         if PRINT_LOGS and lg_pixels_changed > 1:
             # clear_console()
-            print(f'{datetime.datetime.now().strftime("%I:%M:%S%p on %B %d, %Y")} ', end='')
+            print(f'{datetime.datetime.now().strftime("%d%m%Y%H%M%S")} ', end='')
             print(f'{"Motion detected" if lg_pixels_changed > MIN_PIXELS_CHANGED else "No motion detected"}. ', end='')
-            print(f'1e^{lg_pixels_changed:.1f} pixels changed.\n')
+            print(f'1e^{lg_pixels_changed:.1f} pixels changed. \n')
 
-        if pixels_changed > 0 and  math.log10(pixels_changed) >= MIN_PIXELS_CHANGED:            
+        if lg_pixels_changed >= MIN_PIXELS_CHANGED:            
             motion = True
 
             if CAPTURE_MOTION_IMAGES:
@@ -129,7 +123,6 @@ def detect_motion(callback):
                 if not cv.imwrite(dst_path, raw_image):
                     raise Exception('Could not write image')
                 else:
-
                     # don't capture more than MAX_IMAGE_COUNT  
                     image_count += 1
                     if image_count > MAX_IMAGE_COUNT:
@@ -141,19 +134,19 @@ def detect_motion(callback):
             callback(raw_image)
                        
         # detect and segment shapes
-        diff_frame_contours, hierarchy = cv.findContours(image=diff_frame_processed, mode=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_SIMPLE)
+        # diff_frame_contours, hierarchy = cv.findContours(image=diff_frame_processed, mode=cv.RETR_EXTERNAL, method=cv.CHAIN_APPROX_SIMPLE)
         
 
-        for contour in diff_frame_contours:
-            if cv.contourArea(contour) < MIN_CONTOUR_AREA:
-                continue
+        # for contour in diff_frame_contours:
+        #     if cv.contourArea(contour) < MIN_CONTOUR_AREA:
+        #         continue
             
-            (x, y, w, h) = cv.boundingRect(contour)
+        #     (x, y, w, h) = cv.boundingRect(contour)
 
-            bounding_box_offset = 0
+        #     bounding_box_offset = 0
 
             
-            cv.rectangle(img=raw_image, pt1=(x, y), pt2=(x+w+bounding_box_offset, y+h+bounding_box_offset), color=(0, 255, 0), thickness=1)
+        #     cv.rectangle(img=raw_image, pt1=(x, y), pt2=(x+w+bounding_box_offset, y+h+bounding_box_offset), color=(0, 255, 0), thickness=1)
             
             
         previous_frame = current_frame
@@ -168,5 +161,3 @@ def detect_motion(callback):
     cap.release()
     cv.destroyAllWindows()
  
-def clear_console():
-    os.system(f'cls' if os.name == 'nt' else 'clear')

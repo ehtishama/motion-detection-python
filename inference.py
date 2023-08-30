@@ -64,7 +64,7 @@ def inference(image):
     
     class_label = classes[class_idx]
     
-    print(f'Class: {class_label}, Confidence: {class_score.item()} ')
+    print(f'Class: {class_label}, Confidence: {class_score.item()}. \n')
     
     
 detect_motion(on_motion_detected)

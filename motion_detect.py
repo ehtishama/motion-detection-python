@@ -1,7 +1,6 @@
 import cv2 as cv
 import numpy as np
 import time
-import math
 import os
 import uuid
 import datetime
@@ -56,8 +55,8 @@ def detect_motion(callback):
     print('Starting motion detection...')
     
     # get live feed from webcam
-    cap = cv.VideoCapture("./test_videos/trap-camera-video1.mp4")
-    # cap = cv.VideoCapture(0)
+    # cap = cv.VideoCapture("./test_videos/trap-camera-video1.mp4")
+    cap = cv.VideoCapture(0)
 
     previous_capture_time = 0
     previous_frame = None

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
   
-alpha = 0.4
+alpha = 0.3
 min_widht = 100
 max_width = 400
 min_height = 100
@@ -22,7 +22,6 @@ class RunningAverageDetector():
     # compares frame to running avg
     # return true if there's substantial difference
     # (boolean, diff_mask, raw_img)
-
     def apply(self, frame):
 
         # 
@@ -32,7 +31,7 @@ class RunningAverageDetector():
         # initialize background if not already
         if self.running_avg is None:
             self.running_avg = gray_img.copy().astype('float')
-            return (False, None, None)
+            return (False, gray_img, frame)
         
         cv2.accumulateWeighted(gray_img, self.running_avg, alpha)
       
@@ -45,7 +44,7 @@ class RunningAverageDetector():
         contours, _ = cv2.findContours(foreground_thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
-            return (False, None, None)
+            return (False, foreground_thresh, frame)
     
         contour_areas = [cv2.contourArea(c) for c in contours]
         maxIndex = np.argmax(contour_areas)
@@ -54,15 +53,18 @@ class RunningAverageDetector():
 
         (x, y, w, h) = cv2.boundingRect(largest_contour)
 
-        if w < self.min_width or h < self.min_height:
-            return (False, None, None)
-
         bounding_box_offset = 0
         cv2.rectangle(img=frame, pt1=(x, y), pt2=(x+w+bounding_box_offset, y+h+bounding_box_offset), color=(0, 255, 0), thickness=1)
+
+        # print(f'w: {w}, h:{h}')
+        
+        if w < self.min_width or h < self.min_height:
+            return (False, foreground_thresh, frame)
+        
+
         
         return (True, foreground_thresh, frame)
     
-        # print(f'w: {w}, h: {h}')
 
 def run_detector():
     # capture frames from a camera

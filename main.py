@@ -7,7 +7,7 @@ import datetime
 from utils import clear_console
 from naive_detector import NaiveDetector
 from running_average_detector import RunningAverageDetector
-
+from inference import classify
 # Config
 
 # determines the threshold value to binarize
@@ -35,7 +35,7 @@ MIN_PIXELS_CHANGED = ( 1 -  MOTION_SENSITIVITY) * 8
 MIN_CONTOUR_AREA = 400
 
 # to avoid continous frames being captures 
-DELAY_BETWEEN_CAPTURES = 1
+DELAY_BETWEEN_CAPTURES = 5
 
 # whether to save images with motion or not
 CAPTURE_MOTION_IMAGES =  True
@@ -53,45 +53,72 @@ MAX_IMAGE_COUNT = 100
 
 PRINT_LOGS = True
 
-def detect_motion(callback):
-    print('Starting motion detection...')
+CAMERA_SOURCE = "./test_videos/cheetah.mp4"
+
+def main():
+    """Starts the motion detection and classification loop. 
     
-    # get live feed from webcam
-    cap = cv.VideoCapture("./test_videos/trap-camera-video3.mp4")
+    It passes every frame from the camera feed to the 
+    Motion Detector. If a frame does contain motion it
+    is then passed to classification model to perform 
+    inference.
+
+    Raises:
+        Exception: _description_
+    """
+    print("-"*10)
+    print('Starting Motion Detection.')
+    print("-"*10)
     
+    
+    cap = cv.VideoCapture(CAMERA_SOURCE)
     # cap = cv.VideoCapture(0)
+    
     detector = RunningAverageDetector()
     previous_capture_time = 0
+    previous_log_time = 0
     image_count = 0
 
     while True:
         ret, raw_image = cap.read()
         
-        # loop back to start of the video
+        # Restart video if it has ended. 
         if not ret:
             cap.set(cv.CAP_PROP_POS_FRAMES, 0)
             continue
         
-        raw_image = cv.resize(raw_image, (512, 512))
+        # raw_image = cv.resize(raw_image, (512, 512))
         motion, foreground_mask, frame = detector.apply(raw_image.copy())
         
         if OUTPUT_STREAM:
             cv.imshow('Difference', foreground_mask)
             cv.imshow('Original', frame)
         
+        time_since_last_capture = time.time() - previous_capture_time
+        time_since_last_log = time.time() - previous_log_time
+        
+        # Once an image is captured, the detectors waits for X seconds 
+        # before considering new frames for detection.
+        
+        # Periodically log when not detecting for motion.
+        if time_since_last_capture < DELAY_BETWEEN_CAPTURES and \
+            time_since_last_log > 1:
+                print(f'Motion detection stopped for {DELAY_BETWEEN_CAPTURES} seconds.')
+                previous_log_time = time.time()
+                
+        
         if motion:
-            # print('motion')
             
-            
-            # this prevents from continually capturing
-            # each frame once motion is detected
-            time_since_last_capture = time.time() - previous_capture_time
-            if time_since_last_capture >= DELAY_BETWEEN_CAPTURES:
-                print(f'{datetime.datetime.now().strftime("%d%m%Y%H%M%S")} motion detected.')
-                # print(f'But waiting for {DELAY_BETWEEN_CAPTURES} seconds before considering next motion frame.')
-                # continue
-            else:
+            # Prevent successive frames once motion is detected.
+            if time_since_last_capture < DELAY_BETWEEN_CAPTURES:
                 continue
+            else:
+                print(f'Motion detected at {datetime.datetime.now().strftime("%d%m%Y%H%M%S")}.')
+            
+            # Pass the imag to model.
+            classify(raw_image)
+            
+            # Store image with classification. 
             
             if CAPTURE_MOTION_IMAGES:
                 # save current frame
@@ -108,16 +135,13 @@ def detect_motion(callback):
                     # image captured, don't capture anymore images for the next X seconds
                     previous_capture_time = time.time()   
 
-            callback(raw_image)
+           
         
         if (cv.waitKey(30) == 27):
             break
 
     cap.release()
     cv.destroyAllWindows()
- 
-def dummy_func(image):
-    pass
 
 if __name__ == '__main__':
-    detect_motion(dummy_func)
+    main()

@@ -6,7 +6,7 @@ while True:
     ret, image = cap.read()
     
     if not ret:
-        print('Failed to get frame from camera. Exiting.')
+        print('Failed to get a frame from camera. Exiting...')
         break
     
     cv.imshow('Live Camera', image)

@@ -1,17 +1,19 @@
 import cv2
 import numpy as np
   
-alpha = 0.3
-min_widht = 100
+alpha = 0.05
+
+min_widht = 60
+min_height = 60
+
 max_width = 400
-min_height = 100
 max_height = 400
 
 class RunningAverageDetector():
 
     def __init__(self) -> None:
         self.alpha = alpha
-        self.running_avg = None
+        self.running_avg = None # running_avg = (1-alpha)*(running_avg) + alpha*new_frame
         self.thresh = 10
         self.min_width = min_widht
         self.min_height = min_height
@@ -23,8 +25,6 @@ class RunningAverageDetector():
     # return true if there's substantial difference
     # (boolean, diff_mask, raw_img)
     def apply(self, frame):
-
-        # 
         gray_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray_img = cv2.GaussianBlur(gray_img, (21, 21), 0)
 
@@ -33,15 +33,18 @@ class RunningAverageDetector():
             self.running_avg = gray_img.copy().astype('float')
             return (False, gray_img, frame)
         
+        # add current frame to background
         cv2.accumulateWeighted(gray_img, self.running_avg, alpha)
       
         background = cv2.convertScaleAbs(self.running_avg)
-
+        
+        # differentiate background and foreground
         foreground = cv2.absdiff(gray_img, background)
         foreground_thresh = cv2.threshold(src=foreground, thresh=self.thresh, maxval=255, type=cv2.THRESH_BINARY)[1]
-        foreground_thresh = cv2.dilate(foreground_thresh, None, iterations=2)
+        foreground_thresh = cv2.dilate(foreground_thresh, None, iterations=4)
 
         contours, _ = cv2.findContours(foreground_thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
         
         if not contours:
             return (False, foreground_thresh, frame)
@@ -50,19 +53,21 @@ class RunningAverageDetector():
         maxIndex = np.argmax(contour_areas)
         largest_contour = contours[maxIndex]
     
-
+        # gets the bounding box around the largest_contour
         (x, y, w, h) = cv2.boundingRect(largest_contour)
-
+        
+        # print(f'w: {w} h: {h}')
         bounding_box_offset = 0
+        contour_crop = frame[y:y+h, x:x+w].copy()
+        
         cv2.rectangle(img=frame, pt1=(x, y), pt2=(x+w+bounding_box_offset, y+h+bounding_box_offset), color=(0, 255, 0), thickness=1)
 
-        # print(f'w: {w}, h:{h}')
-        
+        # compares the largest_contour with min_width and min_height
         if w < self.min_width or h < self.min_height:
             return (False, foreground_thresh, frame)
         
-
         
+        cv2.imshow('Contour', cv2.resize(contour_crop, (512, 512)))
         return (True, foreground_thresh, frame)
     
 

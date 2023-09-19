@@ -1,6 +1,6 @@
-from motion_detect import detect_motion
+from main import main
 
 def callback(motion_image):
     pass
 
-detect_motion(callback) 
+main(callback) 

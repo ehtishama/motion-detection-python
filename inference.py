@@ -1,10 +1,14 @@
 import torch
 import torchvision
 from PIL import Image
+import os
 
 
 # Setup the classification model.
-print('Setting up Classification model...\n')
+print("-"*10)
+print('Setting up Classification model.')
+print("-"*10)
+
 TRAINED_MODEL_PATH = './models/mobilenet_openimages_subset_acc_82'
 
 target_classes = ['Cheetah', 'Deer', 'Duck', 'Eagle', 'Elephant', 'Fox',
@@ -58,5 +62,7 @@ def classify(image):
     predicted_label = target_classes[max_score_idx]
     
     print(f'Predicted Class: {predicted_label}, Confidence Score: {max_score.item()}. \n')
+    
+    return (predicted_label, max_score.item())
     
   

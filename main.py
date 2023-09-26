@@ -1,13 +1,11 @@
-import cv2 as cv
-import numpy as np
 import time
 import os
 import uuid
 import datetime
-from utils import clear_console
-from naive_detector import NaiveDetector
+import cv2 as cv
 from running_average_detector import RunningAverageDetector
 from inference import classify
+
 # Config
 
 # determines the threshold value to binarize
@@ -40,8 +38,6 @@ DELAY_BETWEEN_CAPTURES = 5
 # whether to save images with motion or not
 CAPTURE_MOTION_IMAGES =  True
 
-# to store images when motion is captured
-CAPTURE_PATH = './motion_captures/'
 
 fps = 60
 
@@ -53,7 +49,10 @@ MAX_IMAGE_COUNT = 100
 
 PRINT_LOGS = True
 
-CAMERA_SOURCE = "./test_videos/cheetah.mp4"
+# to store images when motion is captured
+CAPTURE_PATH = './motion_captures/'
+
+CAMERA_SOURCE = "./test_videos/deer.mp4"
 
 def main():
     """Starts the motion detection and classification loop. 
@@ -74,6 +73,7 @@ def main():
     cap = cv.VideoCapture(CAMERA_SOURCE)
     # cap = cv.VideoCapture(0)
     
+    
     detector = RunningAverageDetector()
     previous_capture_time = 0
     previous_log_time = 0
@@ -83,16 +83,22 @@ def main():
         ret, raw_image = cap.read()
         
         # Restart video if it has ended. 
+        
         if not ret:
+            # TODO:: In production `break` here. 
             cap.set(cv.CAP_PROP_POS_FRAMES, 0)
             continue
         
-        # raw_image = cv.resize(raw_image, (512, 512))
+        raw_image = cv.resize(raw_image, (1280, 720))
         motion, foreground_mask, frame = detector.apply(raw_image.copy())
         
         if OUTPUT_STREAM:
             cv.imshow('Difference', foreground_mask)
             cv.imshow('Original', frame)
+
+            # Important
+            if (cv.waitKey(30) == 27):
+                break
         
         time_since_last_capture = time.time() - previous_capture_time
         time_since_last_log = time.time() - previous_log_time
@@ -115,16 +121,22 @@ def main():
             else:
                 print(f'Motion detected at {datetime.datetime.now().strftime("%d%m%Y%H%M%S")}.')
             
-            # Pass the imag to model.
-            classify(raw_image)
+            # Pass the cropped image to model.
+            label, score = classify(raw_image)
+            
+            
+            
+            frame = cv.rectangle(frame, (0, 0), (250, 75), (0, 0, 0), -1)
+            frame = cv.putText(frame, f'{label} {score:.2f}', (10, int(50)), cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 1, cv.LINE_AA)
             
             # Store image with classification. 
-            
             if CAPTURE_MOTION_IMAGES:
                 # save current frame
                 dst_path = os.path.join(CAPTURE_PATH, f'{str(uuid.uuid1())}.jpg')
+                # fg_dst_path = os.path.join(CAPTURE_PATH, f'{str(uuid.uuid1())}_foreground.jpg')                
+                # cv.imwrite(fg_dst_path, foreground_mask)
                 
-                if not cv.imwrite(dst_path, raw_image):
+                if not cv.imwrite(dst_path, frame):
                     raise Exception('Could not save image.')
                 else:
                     # don't capture more than MAX_IMAGE_COUNT  
@@ -135,7 +147,6 @@ def main():
                     # image captured, don't capture anymore images for the next X seconds
                     previous_capture_time = time.time()   
 
-           
         
         if (cv.waitKey(30) == 27):
             break

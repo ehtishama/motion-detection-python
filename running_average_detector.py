@@ -1,10 +1,11 @@
 import cv2
 import numpy as np
-  
+import time
+
 alpha = 0.05
 
-min_widht = 60
-min_height = 60
+min_widht = 190
+min_height = 190
 
 max_width = 400
 max_height = 400
@@ -57,17 +58,19 @@ class RunningAverageDetector():
         (x, y, w, h) = cv2.boundingRect(largest_contour)
         
         # print(f'w: {w} h: {h}')
+        # time.sleep(.5)
+        
         bounding_box_offset = 0
         contour_crop = frame[y:y+h, x:x+w].copy()
         
         cv2.rectangle(img=frame, pt1=(x, y), pt2=(x+w+bounding_box_offset, y+h+bounding_box_offset), color=(0, 255, 0), thickness=1)
 
         # compares the largest_contour with min_width and min_height
-        if w < self.min_width or h < self.min_height:
+        if w < self.min_width and h < self.min_height:
             return (False, foreground_thresh, frame)
         
         
-        cv2.imshow('Contour', cv2.resize(contour_crop, (512, 512)))
+        # cv2.imshow('Contour', cv2.resize(contour_crop, (512, 512)))
         return (True, foreground_thresh, frame)
     
 

@@ -1,4 +1,4 @@
-from inference import classify
+from model import classify
 import cv2 
 from PIL import Image
 import numpy as np

@@ -4,9 +4,8 @@ import uuid
 import datetime
 import cv2 as cv
 from running_average_detector import RunningAverageDetector
-from inference import classify
+from model import classify
 
-# Config
 
 # determines the threshold value to binarize
 # the difference frame
@@ -38,9 +37,6 @@ DELAY_BETWEEN_CAPTURES = 5
 # whether to save images with motion or not
 CAPTURE_MOTION_IMAGES =  True
 
-
-fps = 60
-
 # Show output feed
 OUTPUT_STREAM = True
 
@@ -65,14 +61,13 @@ def main():
     Raises:
         Exception: _description_
     """
+    
     print("-"*10)
     print('Starting Motion Detection.')
     print("-"*10)
     
-    
     cap = cv.VideoCapture(CAMERA_SOURCE)
     # cap = cv.VideoCapture(0)
-    
     
     detector = RunningAverageDetector()
     previous_capture_time = 0
@@ -82,11 +77,10 @@ def main():
     while True:
         ret, raw_image = cap.read()
         
-        # Restart video if it has ended. 
         
         if not ret:
             # TODO:: In production `break` here. 
-            cap.set(cv.CAP_PROP_POS_FRAMES, 0)
+            cap.set(cv.CAP_PROP_POS_FRAMES, 0) # Restarts test video. 
             continue
         
         raw_image = cv.resize(raw_image, (1280, 720))
@@ -96,14 +90,13 @@ def main():
             cv.imshow('Difference', foreground_mask)
             cv.imshow('Original', frame)
 
-            # Important
-            if (cv.waitKey(30) == 27):
+            if (cv.waitKey(30) == 27): # Important
                 break
         
         time_since_last_capture = time.time() - previous_capture_time
         time_since_last_log = time.time() - previous_log_time
         
-        # Once an image is captured, the detectors waits for X seconds 
+        # Once an image is captured, the detectors waits for DELAY_BETWEEN_CAPTURES sec 
         # before considering new frames for detection.
         
         # Periodically log when not detecting for motion.
@@ -114,17 +107,13 @@ def main():
                 
         
         if motion:
-            
             # Prevent successive frames once motion is detected.
             if time_since_last_capture < DELAY_BETWEEN_CAPTURES:
                 continue
             else:
                 print(f'Motion detected at {datetime.datetime.now().strftime("%d%m%Y%H%M%S")}.')
             
-            # Pass the cropped image to model.
             label, score = classify(raw_image)
-            
-            
             
             frame = cv.rectangle(frame, (0, 0), (250, 75), (0, 0, 0), -1)
             frame = cv.putText(frame, f'{label} {score:.2f}', (10, int(50)), cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 1, cv.LINE_AA)
